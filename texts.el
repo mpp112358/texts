@@ -71,11 +71,16 @@
                                   (texts-create-state 'nested-state (1- (texts-get-depth state)) (texts-get-current-item state) (texts-get-insertions state))))))
                     (item . ,(lambda (state)
                                (texts-create-state 'nested-state (texts-get-depth state) (texts-get-current-item state) (texts-get-insertions state)))))))))
+(defun texts-event-from-str (str)
+  "Return the event symbol corresponding to the given STR."
+  (cond ((equal str "begin") 'begin)
+        ((equal str "end") 'end)
+        ((equal str "item") 'item)))
 
 (defun texts-test-numitems (events)
   "Test texts-numitems using EVENTS sequence of events."
   (interactive "sEvents: ")
-  (message "%s" (funcall (texts-numitems) events (texts-create-state 'null-state 0 0 nil))))
+  (message "%s" (funcall (texts-numitems) (seq-map #'texts-event-from-str events) (texts-create-state 'null-state 0 0 nil))))
 
 (provide 'texts)
 ;;; texts.el ends here
