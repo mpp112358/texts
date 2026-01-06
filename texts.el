@@ -19,9 +19,9 @@
 ;;
 ;;; Code:
 
-(defun texts-create-state (status depth current-item)
-  "Create a state with given STATUS DEPTH and CURRENT-ITEM."
-  `((status ,status)(depth . ,depth) (current-item ,current-item)))
+(defun texts-create-state (status depth current-item insertions)
+  "Create a state with given STATUS DEPTH and CURRENT-ITEM and INSERTIONS."
+  `((status ,status) (depth . ,depth) (current-item ,current-item) (insertions ,insertions)))
 
 (defun texts-get-status (state)
   "Get the status of the given STATE."
@@ -35,6 +35,10 @@
   "Get the current item number of the given STATE."
   (alist-get 'current-item state))
 
+(defun texts-get-insertions (state)
+  "Get the insertions list from given STATE."
+  (alist-get 'insertions state))
+
 (defun texts-fsm (transitions)
   "Return a texts finite state machine for the given TRANSITIONS."
   (lambda (events initial-state)
@@ -47,26 +51,31 @@
   "Define an alist of states and transitions between them."
   (texts-fsm
    `((null-state .
-      ((begin . ,(lambda (state) (texts-create-state 'numerating-state 1 0)))
+      ((begin . ,(lambda (state) (texts-create-state 'numerating-state 1 0 (texts-get-insertions state))))
        (end . ,(lambda (state) state))
        (item . ,(lambda (state) state))))
      (numerating-state .
                        ((begin . ,(lambda (state)
-                                    (texts-create-state 'nested-state 2 (texts-get-current-item state))))
+                                    (texts-create-state 'nested-state 2 (texts-get-current-item state) (texts-get-insertions state))))
                         (end . ,(lambda (state)
-                                  (texts-create-state 'null-state 0 0)))
+                                  (texts-create-state 'null-state 0 0 (texts-get-insertions state))))
                         (item . ,(lambda (state)
-                                   (texts-create-state 'numerating-state 1 (1+ (texts-get-current-item state)))))))
+                                   (texts-create-state 'numerating-state 1 (1+ (texts-get-current-item state)) (cons (1+ (texts-get-current-item state)) (texts-get-insertions state)))))))
      (nested-state .
                    ((begin . ,(lambda (state)
-                                (numitem-create-state 'nested-state (1+ (texts-get-depth state)) (texts-get-current-item state))))
+                                (numitem-create-state 'nested-state (1+ (texts-get-depth state)) (texts-get-current-item state) (texts-get-insertions state))))
                     (end . ,(lambda (state)
                               (let ((depth (numitem-get-depth state)))
                                 (if (eq depth 2)
-                                    (texts-create-state 'numerating-state 1 (texts-get-current-item state))
-                                  (texts-create-state 'nested-state (1- (texts-get-depth state)) (texts-get-current-item state))))))
+                                    (texts-create-state 'numerating-state 1 (texts-get-current-item state) (texts-get-insertions state))
+                                  (texts-create-state 'nested-state (1- (texts-get-depth state)) (texts-get-current-item state) (texts-get-insertions state))))))
                     (item . ,(lambda (state)
-                               (texts-create-state 'nested-state (texts-get-depth state) (texts-get-current-item state))))))))
+                               (texts-create-state 'nested-state (texts-get-depth state) (texts-get-current-item state) (texts-get-insertions state)))))))))
 
-  (provide 'texts)
+(defun texts-test-numitems (events)
+  "Test texts-numitems using EVENTS sequence of events."
+  (interactive "sEvents: ")
+  (message "%s" (funcall (texts-numitems) events (texts-create-state 'null-state 0 0 nil))))
+
+(provide 'texts)
 ;;; texts.el ends here
